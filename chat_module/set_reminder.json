@@ -1,0 +1,27 @@
+{
+    "type": "function",
+    "function": {
+        "name": "set_reminder_info",
+        "description": "リマインダーの情報をセットする. ",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "リマインダーのタイトル．"
+                },
+                "date": {
+                    "type": "string",
+                    "description": "日時と時間"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "リマインダーの内容"
+                }
+            }, 
+            "required": ["title", "date", "content"]
+        }
+    }
+}
+
+

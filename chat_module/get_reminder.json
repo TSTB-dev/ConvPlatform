@@ -1,0 +1,47 @@
+{
+    "type": "function",
+    "function": {
+        "name": "get_reminder_info",
+        "description": "リマインダーをセットするために必要な情報を聞き出す．",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "リマインダーのタイトル．"
+                },
+                "date": {
+                    "type": "string",
+                    "description": "日時と時間"
+                },
+                "repeat_interval_unit": {
+                    "type": "string",
+                    "description": "反復する際の時間間隔の単位, Ex. day"
+                },
+                "repeat_interval_value": {
+                    "type": "string",
+                    "description": "反復する際の時間の値, Ex. 10"
+                },
+                "context": {
+                    "type": "string",
+                    "description": "リマインダーを設定する際のコンテキスト，ユーザがなぜそのリマインダーを設定したいのか"
+                },
+                "priority": {
+                    "type": "string",
+                    "description": "優先度．1~5の5段階のいずれか．Ex. 3"
+                },
+                "category": {
+                    "type": "string",
+                    "description": "そのリマインダーのカテゴリ，Ex. Routine"
+                },
+                "completed": {
+                    "type": "string",
+                    "description": "そのリマインダーの完了状態, Ex. False"
+                }
+            },
+            "required": ["title", "date", "context", "priority", "category", "completed"]
+        }
+    }
+}
+
+
