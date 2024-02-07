@@ -72,7 +72,7 @@ def normalize_score(scores: List[float]) -> List[float]:
     return [s / sum(scores) for s in scores]
 
 async def manual_run(panel, key, user_input: str):
-
+    
     role = st.session_state["role"]
     chat_model = st.session_state["model"]
     temp = st.session_state["temp"]
@@ -83,7 +83,7 @@ async def manual_run(panel, key, user_input: str):
     scores: List[float] = normalize_score(scores)
     action_df["prior"] = scores
     action_str: str = format_dataframe(action_df)
-
+    
     persona = st.session_state["persona"]
     
     if st.session_state["forced_action"] != "":
@@ -116,7 +116,7 @@ async def manual_run(panel, key, user_input: str):
                 container.markdown(response_buffer)
                 break
     
-    if "action" in key:
+    if "default" in key:
         history: List[Dict[str, str]] = st.session_state[f"{key}_messages"]
         formatted_chat_message: str = format_chat_message(history, user_input)
         print(f"FormattedChatMessage:----\n{formatted_chat_message}----\n")
@@ -125,7 +125,7 @@ async def manual_run(panel, key, user_input: str):
             with st.chat_message("user"):
                 container = st.empty()
                 container.markdown(user_input)
-            with st.chat_message("Action"):
+            with st.chat_message("Default"):
                 container = st.empty()
         response_buffer = ""
         
@@ -135,7 +135,7 @@ async def manual_run(panel, key, user_input: str):
         
         persona = st.session_state["persona"]
         
-        input_prompt = f"{persona}\n{formatted_chat_message}\n{action_str}\n上記の会話履歴におけるBの会話行動を選択してください"
+        input_prompt = f"{persona}\n{formatted_chat_message}\n上記の会話履歴におけるBの返答を考えてください"
         
         async for chunk in astream_chat(client, input_prompt, role=role, model=chat_model, temperature=temp):
             if isinstance(chunk, str):
@@ -145,7 +145,7 @@ async def manual_run(panel, key, user_input: str):
                 container.markdown(response_buffer)
                 break
     
-    st.session_state["forced_action"] = ""
+    st.session_state["forced_action"] = ""  
     
     return response_buffer  
 
@@ -162,7 +162,7 @@ async def logic(key, panel, user_input: str):
         }])
         return response
     
-    if "action" in key:
+    if "default" in key:
         response: str = await manual_run(panel, key, user_input)
         print(f"Response: ----\n{response}-----\n")
         st.session_state[f"{key}_messages"].extend([{
@@ -201,7 +201,7 @@ def main_page():
     # 初期化
     if "chat_messages" not in st.session_state:
         st.session_state["chat_messages"] = []
-        st.session_state["action_messages"] = []
+        st.session_state["default_messages"] = []
         st.session_state["action"]: pd.DataFrame = None
         st.session_state["temp"] = DEFAULT_TEMPERATURE
         st.session_state["model"] = DEFAULT_MODEL
@@ -239,23 +239,24 @@ def main_page():
             st.rerun()
             
         # 行動の更新
-        update_action = st.number_input("Update Action", 0)
+        update_action = st.text_input("Update Action", "Enter the action to update")
         update_desc = st.text_input("Update Description", "Enter the new description")
         update_prior = st.slider("Update Prior", 0.0, 1.0, 0.5)
         update_button = st.button("Update")
         if update_button:
             action_df = st.session_state["action"]
-            action_df.loc[update_action, "desc"] = update_desc
-            action_df.loc[update_action, "prior"] = update_prior
+            action_df.loc[action_df["action"] == update_action, "desc"] = update_desc
+            action_df.loc[action_df["action"] == update_action, "prior"] = update_prior
             st.session_state["action"] = action_df
             st.rerun()
         
-        # 強制的な行動の設定
+        # 行動の強制
         forced_action = st.text_input("Forced Action", "Enter the action to force")
-        forced_button = st.button("Force")
-        if forced_button:
+        force_button = st.button("Force")
+        if force_button:
             st.session_state["forced_action"] = forced_action
             st.rerun()
+        
         
         # 行動の設定
         action_df = pd.DataFrame(
@@ -264,18 +265,15 @@ def main_page():
         edited_action_df = st.data_editor(action_df)
         st.session_state["action"] = edited_action_df
         
+        
         # 温度の設定
         temp = st.slider("Temperature", 0.0, 1.0, DEFAULT_TEMPERATURE)
         st.session_state["temp"] = temp
         
         # モデルの選択
-        custom_model = st.selectbox("Model", (MODEL_LIST))
-        print(f"Model:----\n{custom_model}----\n")
-        st.session_state["model"] = custom_model
-        
-        sub_model = st.selectbox("Sub Model", (MODEL_LIST))
-        print(f"SubModel:----\n{sub_model}----\n")
-        st.session_state["sub_model"] = sub_model
+        model = st.selectbox("Model", (MODEL_LIST))
+        print(f"Model:----\n{model}----\n")
+        st.session_state["model"] = model
 
         # roleの設定
         role = st.selectbox("Role", ROLE_LIST)
@@ -311,7 +309,7 @@ def main_page():
             
         reset_default = st.button("Reset Default")
         if reset_default:
-            st.session_state["action_messages"] = []
+            st.session_state["default_messages"] = []
         
         # 保存と終了
         save_action = st.sidebar.button("Save Action")
@@ -342,7 +340,7 @@ def main_page():
                 st.chat_message(msg["role"]).write(msg["content"])
 
     with column_right:
-        for msg in st.session_state["action_messages"]:
+        for msg in st.session_state["default_messages"]:
             if msg["role"] == "system":
                 st.chat_message(msg["role"]).write(msg["content"])
             elif msg["role"] == "user":
@@ -353,7 +351,7 @@ def main_page():
     if user_input := st.chat_input():
         params = [
             ("chat", column_left, user_input),
-            ("action", column_right, user_input)
+            ("default", column_right, user_input)
         ]
         responses = asyncio.run(task_factory(params))
         
