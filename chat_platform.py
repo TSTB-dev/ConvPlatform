@@ -304,6 +304,8 @@ def main_page():
         exit_button = st.sidebar.button("Exit")
         if exit_button:
             st.stop()
+            save_conversation_info()
+            save_action_info()
         
             
         
