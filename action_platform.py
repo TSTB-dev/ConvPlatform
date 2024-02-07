@@ -87,7 +87,7 @@ async def manual_run(panel, key, user_input: str):
     persona = st.session_state["persona"]
     
     if st.session_state["forced_action"] != "":
-        action_str = st.session_state["forced_action"]
+        action_str = st.session_state["forced_action"] + "この行動を選択しました．"
     
     if "chat" in key:
         history: List[Dict[str, str]] = st.session_state[f"{key}_messages"]
@@ -257,6 +257,13 @@ def main_page():
             st.session_state["forced_action"] = forced_action
             st.rerun()
         
+        # 行動の強制，既存の行動から選択
+        if st.session_state["action"] is not None:
+            forced_action_select = st.selectbox("Forced Action", st.session_state["action"]["action"])
+            button_select = st.button("Select")
+            if button_select:
+                st.session_state["forced_action"] = format_dataframe(st.session_state["action"][st.session_state["action"]["action"] == forced_action_select])
+                st.rerun()
         
         # 行動の設定
         action_df = pd.DataFrame(
