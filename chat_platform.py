@@ -155,11 +155,34 @@ def main_page():
         # パラメータの設定
         # 温度，モデルの選択，行動の選択，行動の事前分布
         
+        # 行動の追加
+        new_action = st.text_input("New Action", "Enter the new action")
+        new_desc = st.text_input("New Description", "Enter the new description")
+        new_prior = st.slider("New Prior", 0.0, 1.0, 0.5)
+        add_action = st.button("Add Action")
+        if add_action:
+            new_action_df = pd.DataFrame({
+                "action": [new_action],
+                "desc": [new_desc],
+                "prior": [new_prior],
+            })
+            st.session_state["action"] = pd.concat([st.session_state["action"], new_action_df], ignore_index=True)
+            st.rerun()
+            
+        # 行動の削除
+        delete_action = st.text_input("Delete Action", "Enter the action to delete")
+        delete_button = st.button("Delete")
+        if delete_button:
+            action_df = st.session_state["action"]
+            action_df = action_df[action_df["action"] != delete_action]
+            st.session_state["action"] = action_df
+            st.rerun()
+        
         # 行動の設定
         action_df = pd.DataFrame(
             DEFAULT_ACTION if st.session_state["action"] is None else st.session_state["action"],
         )
-        edited_action_df = st.data_editor(action_df, num_rows="dynamic")
+        edited_action_df = st.data_editor(action_df)
         st.session_state["action"] = edited_action_df
         
         # 温度の設定
