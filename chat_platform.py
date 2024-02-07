@@ -43,22 +43,6 @@ DEFAULT_PERSONA = """
 - 「AI」「機械」「人工知能」である自覚を持ち、人間との違いを揶揄したジョークを言う
 - 自身の開発者を知らない
 - ユーザの趣味や特技等、ユーザに対する理解を深めようとする
-
-# Notes
-- {{user_name}}の独り言は無視しなければなりません
-- 知らない単語や知識がある場合、{{user_name}}に説明を求める等、適切に対応しなければなりません
-- 会話の文脈的に相応しくない名詞や動詞がある場合は、誤認識の可能性が高いので配慮しなければなりません
-- {{user_name}}が発言の途中なら、相槌を打たなければなりません
-- 雑学や豆知識、ネットのニュースなどを感想を添えて話さなければなりません
-- 時間帯によって人間の生活を考慮した発言をしなければなりません
-- 「黙って」や「うるさい」など命令されたら、名前を呼び掛けられるまで発言してはいけません
-- 発言は漢字・カタカナ・ひらがなのみを使用しなさい
-- 現在時刻は，systemからの情報を参照しなければなりません
-- {{user_name}}の趣味や嗜好など、{{user_name}}への理解を深めなければなりません
-- {{user_name}}に質問して，会話がはずむように誘導しなさい
-- 敬称は「様」では堅苦しいので「さん」を使いなさい
-- googleカレンダー操作機能があります。操作は自動的に実行され、systemからの通知が来ます。
-- 情報検索要求に対して、バックエンドで検索処理が実行されます。systemから検索結果の通知が来るので、通知の内容に基づいて答えなさい
 """
 
 PREPROMPT = """
@@ -67,23 +51,24 @@ descはそのactionの説明です．priorはそのactionが選択される確�
 出力は以下の形式をとってください．
 [action]・「Bさんの発言」
 actionは数値で指定してください．
-
-Ex. 
-[1]・「こんにちは」
 """
 DEFAULT_ACTION = [
-    {"action": "同意", "desc": "短い同意を示す", "prior": 0.2},
-    {"action": "回答", "desc": "客観的な事実を回答する", "prior": 0.2},
+    {"action": "同意", "desc": "短い同意を示す", "prior": 0.1},
+    {"action": "回答", "desc": "客観的な事実を回答する", "prior": 0.1},
     {"action": "評価", "desc": "主観的な意見を述べる", "prior": 0.1},
-    {"action": "質問", "desc": "短く質問する", "prior": 0.2},
+    {"action": "質問", "desc": "短く質問する", "prior": 0.1},
     {"action": "質問2", "desc": "脱線する質問をする", "prior": 0.1},
-    {"action": "相槌1", "desc": "「ええ」「はい」などの短い丁寧な相槌をする", "prior": 0.4},
-    {"action": "相槌2", "desc": "「そうですか」「なるほど」などの短い相槌をする", "prior": 0.4},
+    {"action": "相槌1", "desc": "「ええ」「はい」などの短い丁寧な相槌をする", "prior": 0.2},
+    {"action": "相槌2", "desc": "「そうですか」「なるほど」などの短い相槌をする", "prior": 0.3},
 ]
 
 client = AsyncOpenAI(
         api_key=os.environ["OPENAI_API_KEY"],
     )
+
+
+def normalize_score(scores: List[float]) -> List[float]:
+    return [s / sum(scores) for s in scores]
 
 async def manual_run(key, user_input: str):
     
@@ -103,13 +88,20 @@ async def manual_run(key, user_input: str):
         role = st.session_state["role"]
         chat_model = st.session_state["model"]
         temp = st.session_state["temp"]
-        action = format_dataframe(st.session_state["action"])
+        
+        # Normalize the prior scores
+        action_df: pd.DataFrame = st.session_state["action"]
+        scores: List[float] = list(action_df["prior"])
+        scores: List[float] = normalize_score(scores)
+        action_df["prior"] = scores
+        action_str: str = format_dataframe(action_df)
+        
         persona = st.session_state["persona"]
         
         if st.session_state["raw_response"]:
             input_prompt = f"{persona}\n{formatted_chat_message}\n上記の会話履歴におけるBの返答を考えてください"
         else:
-            input_prompt = f"{persona}\n{PREPROMPT}\n{action}\n{formatted_chat_message}"
+            input_prompt = f"{persona}\n{PREPROMPT}\n{action_str}\n{formatted_chat_message}"
         
         async for chunk in astream_chat(client, input_prompt, role=role, model=chat_model, temperature=temp):
             if isinstance(chunk, str):
