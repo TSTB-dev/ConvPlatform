@@ -275,11 +275,20 @@ def main_page():
             st.session_state["chat_messages"] = []
         
         # 保存と終了
-        exit_app = st.sidebar.button("Save & Exit")
-        if exit_app:
+        save_action = st.sidebar.button("Save Action")
+        if save_action:
             save_action_info()
+        
+        save_conv = st.sidebar.button("Save Conversation")
+        if save_conv:
             save_conversation_info()
+
+        exit_button = st.sidebar.button("Exit")
+        if exit_button:
             st.stop()
+        
+            
+        
 
     column_left, column_right = st.columns(2)
     with column_left:
