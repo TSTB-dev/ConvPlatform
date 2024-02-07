@@ -229,6 +229,19 @@ def main_page():
             action_df = action_df[action_df["action"] != delete_action]
             st.session_state["action"] = action_df
             st.rerun()
+            
+        # 行動の更新
+        update_action = st.text_input("Update Action", "Enter the action to update")
+        update_desc = st.text_input("Update Description", "Enter the new description")
+        update_prior = st.slider("Update Prior", 0.0, 1.0, 0.5)
+        update_button = st.button("Update")
+        if update_button:
+            action_df = st.session_state["action"]
+            action_df.loc[action_df["action"] == update_action, "desc"] = update_desc
+            action_df.loc[action_df["action"] == update_action, "prior"] = update_prior
+            st.session_state["action"] = action_df
+            st.rerun()
+        
         
         # 行動の設定
         action_df = pd.DataFrame(
@@ -236,6 +249,7 @@ def main_page():
         )
         edited_action_df = st.data_editor(action_df)
         st.session_state["action"] = edited_action_df
+        
         
         # 温度の設定
         temp = st.slider("Temperature", 0.0, 1.0, DEFAULT_TEMPERATURE)
@@ -270,9 +284,13 @@ def main_page():
                 st.error("Invalid path")
         
         # 会話履歴のリセット
-        reset_chat = st.button("Reset Chat")
+        reset_chat = st.button("Reset Custom Chat")
         if reset_chat:
             st.session_state["chat_messages"] = []
+            
+        reset_default = st.button("Reset Default")
+        if reset_default:
+            st.session_state["default_messages"] = []
         
         # 保存と終了
         save_action = st.sidebar.button("Save Action")
