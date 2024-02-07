@@ -70,7 +70,7 @@ client = AsyncOpenAI(
 def normalize_score(scores: List[float]) -> List[float]:
     return [s / sum(scores) for s in scores]
 
-async def manual_run(key, user_input: str):
+async def manual_run(panel, key, user_input: str):
     
     if "chat" in key:
         history: List[Dict[str, str]] = st.session_state[f"{key}_messages"]
@@ -78,11 +78,12 @@ async def manual_run(key, user_input: str):
         print(f"FormattedChatMessage:----\n{formatted_chat_message}----\n")
         print(f"FormattedActionDF:----\n{format_dataframe(st.session_state['action'])}----\n")
         
-        with st.chat_message("user"):
-            container = st.empty()
-            container.markdown(user_input)
-        with st.chat_message("V.I.I.D.A."):
-            container = st.empty()
+        with panel:
+            with st.chat_message("user"):
+                container = st.empty()
+                container.markdown(user_input)
+            with st.chat_message("Custom"):
+                container = st.empty()
         response_buffer = ""
         
         role = st.session_state["role"]
@@ -110,11 +111,41 @@ async def manual_run(key, user_input: str):
             else:
                 container.markdown(response_buffer)
                 break
+    
+    if "default" in key:
+        history: List[Dict[str, str]] = st.session_state[f"{key}_messages"]
+        formatted_chat_message: str = format_chat_message(history, user_input)
+        print(f"FormattedChatMessage:----\n{formatted_chat_message}----\n")
+        
+        with panel:
+            with st.chat_message("user"):
+                container = st.empty()
+                container.markdown(user_input)
+            with st.chat_message("Default"):
+                container = st.empty()
+        response_buffer = ""
+        
+        role = st.session_state["role"]
+        chat_model = st.session_state["model"]
+        temp = st.session_state["temp"]
+        
+        persona = st.session_state["persona"]
+        
+        input_prompt = f"{persona}\n{formatted_chat_message}\n上記の会話履歴におけるBの返答を考えてください"
+        
+        async for chunk in astream_chat(client, input_prompt, role=role, model=chat_model, temperature=temp):
+            if isinstance(chunk, str):
+                response_buffer += chunk
+                container.markdown(response_buffer + "⚫︎")
+            else:
+                container.markdown(response_buffer)
+                break
+    
     return response_buffer  
 
-async def logic(key, user_input: str):
+async def logic(key, panel, user_input: str):
     if "chat" in key:
-        response: str = await manual_run(key, user_input)
+        response: str = await manual_run(panel, key, user_input)
         print(f"Response: ----\n{response}-----\n")
         st.session_state[f"{key}_messages"].extend([{
                 "role": "user",
@@ -124,6 +155,19 @@ async def logic(key, user_input: str):
                 "content": response,
         }])
         return response
+    
+    if "default" in key:
+        response: str = await manual_run(panel, key, user_input)
+        print(f"Response: ----\n{response}-----\n")
+        st.session_state[f"{key}_messages"].extend([{
+                "role": "user",
+                "content": user_input,
+            }, {
+                "role": "assistant",
+                "content": response,
+        }])
+        return response
+    
         
 async def task_factory(params):
     tasks = []
@@ -136,6 +180,13 @@ def save_action_info():
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
     file_path = os.path.join(SAVE_DIR, f"action_{current_time}.csv")
     action_df.to_csv(file_path, index=False)
+    
+def save_conversation_info():   
+    chat_messages = st.session_state["chat_messages"]
+    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_path = os.path.join(SAVE_DIR, f"chat_{current_time}.csv")
+    chat_df = pd.DataFrame(chat_messages)
+    chat_df.to_csv(file_path, index=False)
 
 def main_page():
             
@@ -144,6 +195,7 @@ def main_page():
     # 初期化
     if "chat_messages" not in st.session_state:
         st.session_state["chat_messages"] = []
+        st.session_state["default_messages"] = []
         st.session_state["action"]: pd.DataFrame = None
         st.session_state["temp"] = DEFAULT_TEMPERATURE
         st.session_state["model"] = DEFAULT_MODEL
@@ -226,21 +278,32 @@ def main_page():
         exit_app = st.sidebar.button("Save & Exit")
         if exit_app:
             save_action_info()
-            # compress_history(LOG_DIR, st.session_state["chat_messages"])
-            # save_profile_info(PROFILE_DIR, LOG_DIR)
+            save_conversation_info()
             st.stop()
 
-    for msg in st.session_state["chat_messages"]:
-        if msg["role"] == "system":
-            st.chat_message(msg["role"]).write(msg["content"])
-        elif msg["role"] == "user":
-            st.chat_message(msg["role"]).write(msg["content"])
-        elif msg["role"] == "assistant":
-            st.chat_message(msg["role"]).write(msg["content"])
+    column_left, column_right = st.columns(2)
+    with column_left:
+        for msg in st.session_state["chat_messages"]:
+            if msg["role"] == "system":
+                st.chat_message(msg["role"]).write(msg["content"])
+            elif msg["role"] == "user":
+                st.chat_message(msg["role"]).write(msg["content"])
+            elif msg["role"] == "assistant":
+                st.chat_message(msg["role"]).write(msg["content"])
 
+    with column_right:
+        for msg in st.session_state["default_messages"]:
+            if msg["role"] == "system":
+                st.chat_message(msg["role"]).write(msg["content"])
+            elif msg["role"] == "user":
+                st.chat_message(msg["role"]).write(msg["content"])
+            elif msg["role"] == "assistant":
+                st.chat_message(msg["role"]).write(msg["content"])
+    
     if user_input := st.chat_input():
         params = [
-            ("chat", user_input),
+            ("chat", column_left, user_input),
+            ("default", column_right, user_input)
         ]
         responses = asyncio.run(task_factory(params))
         
