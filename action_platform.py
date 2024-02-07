@@ -47,7 +47,8 @@ DEFAULT_PERSONA = """
 """
 
 PREPROMPT = """
-上記の会話におけるBの返答を考えてください．下記の会話actionから一つ選択して回答してください．回答時にはどのactionを選択したかと，そのactionにおけるBさんの発言も教えてください．
+上記の会話におけるBの返答を考えてください．下記の会話actionから一つ選択して回答してください．
+回答時にはどのactionを選択したかと，そのactionにおけるBさんの発言も教えてください．
 descはそのactionの説明です．priorはそのactionが選択される確率です．
 出力は以下の形式をとってください．
 [action]・「Bさんの発言」
@@ -87,7 +88,7 @@ async def manual_run(panel, key, user_input: str):
     persona = st.session_state["persona"]
     
     if st.session_state["forced_action"] != "":
-        action_str = st.session_state["forced_action"] + "この行動を選択しました．"
+        action_str = st.session_state["forced_action"] + "この行動を必ず選択してください"
     
     if "chat" in key:
         history: List[Dict[str, str]] = st.session_state[f"{key}_messages"]
@@ -182,12 +183,17 @@ async def task_factory(params):
     return await asyncio.gather(*tasks)
 
 def save_action_info():
+    if os.path.exists(SAVE_ACTION_DIR) is False:
+        os.makedirs(SAVE_ACTION_DIR)
+    
     action_df: pd.DataFrame = st.session_state["action"]
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
     file_path = os.path.join(SAVE_ACTION_DIR, f"action_{current_time}.csv")
     action_df.to_csv(file_path, index=False)
     
 def save_conversation_info():   
+    if os.path.exists(SAVE_CONV_DIR) is False:
+        os.makedirs(SAVE_CONV_DIR)
     chat_messages = st.session_state["chat_messages"]
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
     file_path = os.path.join(SAVE_CONV_DIR, f"chat_{current_time}.csv")
