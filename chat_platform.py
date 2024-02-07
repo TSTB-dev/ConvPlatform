@@ -12,7 +12,8 @@ import streamlit as st
 from utils import format_dataframe, deserialize_chat_message, format_chat_message, astream_chat, load_df_from_csv
 
 load_dotenv('./.env')
-SAVE_DIR = "./saved_actions"
+SAVE_ACTION_DIR = "./saved_actions"
+SAVE_CONV_DIR = "./saved_conversations"
 
 DEFAULT_MODEL = "gpt-4-0125-preview"
 MODEL_LIST = [
@@ -178,13 +179,13 @@ async def task_factory(params):
 def save_action_info():
     action_df: pd.DataFrame = st.session_state["action"]
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_path = os.path.join(SAVE_DIR, f"action_{current_time}.csv")
+    file_path = os.path.join(SAVE_ACTION_DIR, f"action_{current_time}.csv")
     action_df.to_csv(file_path, index=False)
     
 def save_conversation_info():   
     chat_messages = st.session_state["chat_messages"]
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_path = os.path.join(SAVE_DIR, f"chat_{current_time}.csv")
+    file_path = os.path.join(SAVE_CONV_DIR, f"chat_{current_time}.csv")
     chat_df = pd.DataFrame(chat_messages)
     chat_df.to_csv(file_path, index=False)
 
