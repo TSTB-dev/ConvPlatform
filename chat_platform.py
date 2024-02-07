@@ -202,6 +202,7 @@ def main_page():
         st.session_state["role"] = DEFAULT_ROLE
         st.session_state["persona"] = DEFAULT_PERSONA
         st.session_state["raw_response"]: bool = False
+        st.session_state["preprompt"] = PREPROMPT
 
     with st.sidebar:
         # パラメータの設定
@@ -271,6 +272,10 @@ def main_page():
         # 生のGPT出力の設定
         raw_response: bool = st.toggle("Raw Response", False)
         st.session_state["raw_response"] = raw_response
+        
+        # 行動設定のプロンプト
+        preprompt = st.text_area("Preprompt", PREPROMPT)
+        st.session_state["preprompt"] = preprompt
         
         # 設定のロード
         load_path = st.text_input("Load Path", "Enter the path to load")
