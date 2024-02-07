@@ -147,7 +147,7 @@ def save_action_info():
 
 def main_page():
             
-    st.title("ChatBot")
+    st.title("Chat Experiments")
 
     # 初期化
     if "chat_messages" not in st.session_state:
